@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="f02eb660-2871-44d0-9fab-9b17e3f1f8c0" >
+		<http:listener-connection host="localhost" port="8081" />
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="5a3cd2b5-c6cd-4f13-a428-6d0ab125d6e5" >
+		<http:request-connection host="api.openweathermap.org" port="80" />
+	</http:request-config>
+	<flow name="world-weather-apiFlow" doc:id="085f1d33-b01f-4bc6-80e3-de98f597d1ef" >
+		<http:listener doc:name="Listener" doc:id="8ff3fae5-0871-4eef-a21d-fa648385996f" config-ref="HTTP_Listener_config" path="/world" allowedMethods="Get"/>
+		<http:request method="GET" doc:name="Request" doc:id="be6f18a2-2bcd-49b1-be25-6c9445f81e5b" config-ref="HTTP_Request_configuration" path="/geo/1.0/direct">
+			<http:query-params><![CDATA[#[output application/json
+---
+{
+    q     : (attributes.queryParams.city default "Unknown") ++ "," ++ (attributes.queryParams.country default "Unknown"),
+    units : "metric",
+    appid : "77d8f23f538eefc5ec5b72a698598981"
+}]]]></http:query-params>
+		</http:request>
+		<logger level="INFO" doc:name="Logger" doc:id="747893e4-4afe-43da-9a99-e69373cd7fab" message="#[payload]"/>
+		<ee:transform doc:name="Transform Message" doc:id="a7f152a1-f095-4550-b776-94625dfc7c8b">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    city    : if (!isEmpty(payload)) payload[0].name else "Unknown",
+    state   : if (!isEmpty(payload)) payload[0].state else "Unknown",
+    country : if (!isEmpty(payload)) payload[0].country else "IN",
+    lat     : if (!isEmpty(payload)) payload[0].lat else 0,
+    lon     : if (!isEmpty(payload)) payload[0].lon else 0
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="c73ee3b1-7aa7-4dca-a1db-87eec81a0db3" message="#[payload]"/>
+	</flow>
+</mule>
